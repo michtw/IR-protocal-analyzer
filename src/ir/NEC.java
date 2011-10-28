@@ -3,7 +3,7 @@ package ir;
 import java.util.*;
 
 public class NEC {
-
+   
     private final long IRmask = 0x00800000;
     private long irPatterns[];
     private byte irData[];
@@ -106,6 +106,40 @@ public class NEC {
         return "NEC IR format.";
     }
 
+    private void byteToIrLength(byte b, int[] ir, int toIndex) {
+        boolean bit;
+        int idx = toIndex;
+        
+        for (int i = 7; i >= 0; i--) {
+            bit = ((b >>> i) & 0x1) == 0x1 ? true : false;
+            ir[idx++] = Parameters.NEC_carrier_waveform;
+            if (bit) {                
+                ir[idx++] = Parameters.NEC_logical1_low;
+            } else {
+                ir[idx++] = Parameters.NEC_logical0_low;
+            }
+        }
+    }
+            
+    public int[] codeToIrLength(short customCode, byte dataCode) {
+        int[] ir = new int[(16 + 16 + 1) * 2]; // 33 bit
+        byte[] b = new byte[4];
+        int j = 0;
+        
+        Arrays.fill(ir, 0x00000000);
+        b[0] = (byte)(customCode >>> 8);
+        b[1] = (byte)(customCode & 0xff);
+        b[2] = dataCode;
+        b[3] = (byte)~dataCode;
+        ir[j++] = Parameters.NEC_header;
+        ir[j++] = Parameters.NEC_header_low;        
+        
+        for (int i = 0; i < b.length; i++, j+=16) {
+            byteToIrLength(b[i], ir, j);
+        }
+        return ir;
+    }
+    
     public byte[] codeToCommand(short customCode, byte dataCode) {
 
         byte ir[] = new byte[512];

@@ -4,6 +4,7 @@
 
 package ir;
 
+import java.awt.Color;
 import org.jdesktop.application.Action;
 import org.jdesktop.application.ResourceMap;
 import org.jdesktop.application.SingleFrameApplication;
@@ -15,6 +16,10 @@ import javax.swing.Timer;
 import javax.swing.Icon;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
+import java.awt.Graphics;
+import java.awt.RenderingHints;
+import java.awt.Graphics2D;
+import javax.swing.*;
 
 /**
  * The application's main frame.
@@ -81,6 +86,13 @@ public class IRView extends FrameView {
         });
     }
 
+    public static void setAntiAliasing(Graphics g, boolean yesno) {
+        Object obj = yesno ? RenderingHints.VALUE_ANTIALIAS_ON
+                     : RenderingHints.VALUE_ANTIALIAS_OFF;
+
+        ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_ANTIALIASING, obj);
+    }
+
     @Action
     public void showAboutBox() {
         if (aboutBox == null) {
@@ -102,7 +114,7 @@ public class IRView extends FrameView {
 
         mainPanel = new javax.swing.JPanel();
         jPanel1 = new javax.swing.JPanel();
-        jPanel2 = new javax.swing.JPanel();
+        irGraphic = new javax.swing.JPanel();
         jPanel3 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         irCode = new javax.swing.JTextArea();
@@ -134,20 +146,21 @@ public class IRView extends FrameView {
         jPanel1.setName("jPanel1"); // NOI18N
         jPanel1.setLayout(new java.awt.GridLayout(3, 1));
 
-        jPanel2.setName("jPanel2"); // NOI18N
+        irGraphic.setBackground(Color.black);
+        irGraphic.setName("irGraphic");
 
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+        javax.swing.GroupLayout irGraphicLayout = new javax.swing.GroupLayout(irGraphic);
+        irGraphic.setLayout(irGraphicLayout);
+        irGraphicLayout.setHorizontalGroup(
+            irGraphicLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGap(0, 800, Short.MAX_VALUE)
         );
-        jPanel2Layout.setVerticalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+        irGraphicLayout.setVerticalGroup(
+            irGraphicLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGap(0, 186, Short.MAX_VALUE)
         );
 
-        jPanel1.add(jPanel2);
+        jPanel1.add(irGraphic);
 
         jPanel3.setName("jPanel3"); // NOI18N
 
@@ -369,30 +382,69 @@ public class IRView extends FrameView {
         // TODO add your handling code here:
         short customCode = 0x1234;
         byte dataCode = 0x56;
+        int ir[];
         
         System.out.println(dataArea.getText());
         NEC nec = new NEC();
         byte[] code = nec.codeToCommand(customCode, dataCode);
-        for (int i = 0; i < code.length; i++) {
-            // output to irCode
+        for (int i = 0; i < code.length; i++) {            
             Byte.toString(code[i]);
-            System.out.println(String.format("%#04x", code[i]));
+            //System.out.println(String.format("%#04x", code[i]));
             irCode.append(String.format("%02x ", code[i]));
-            if (((i+1) % 16) == 0) {
+            if (((i+1) % 32) == 0) {
                 irCode.append("\n");
             }   
         }   
-
+        ir = nec.codeToIrLength(customCode, dataCode);
+        paintIRGraphics(irGraphic, ir);
     }//GEN-LAST:event_generateDataMouseClicked
-
+    
+    private void paintIRGraphics(JPanel p, int[] ir) {
+    
+        int width = p.getWidth();
+        int height = p.getHeight();
+        int H = 80;  // heigh
+        int startWidth = 80;
+        int unit = 45; // 1 pixel represents 20us IR length.
+        boolean toggle = true; // Assume that IR signal start from carrier waveform.
+        
+        int x = 0; 
+        int y = (height / 4) * 3;
+                
+        Graphics g = p.getGraphics();
+        g.setColor(Color.green);
+        setAntiAliasing(g, true);
+        
+        g.drawLine(x, y, startWidth, y);
+        
+        x += startWidth;
+      
+        for (int i = 0; i < ir.length; i++) {
+            System.out.println("ir-" + i + ": " + ir[i]);
+            if (toggle) {
+                
+                g.drawLine(x, y, x, y - H);
+                y -= H;
+                g.drawLine(x, y, x + (ir[i] / unit), y);
+                x += ir[i] / unit;
+                g.drawLine(x, y, x, y + H);
+                y += H;
+            } else {
+                g.drawLine(x, y, x + (ir[i] / unit), y);
+                x += ir[i] / unit;
+            }
+            toggle = toggle ? false : true;
+        }
+    }
+    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextArea dataArea;
     private javax.swing.JButton generateData;
     private javax.swing.JTextArea irCode;
+    private javax.swing.JPanel irGraphic;
     private javax.swing.JComboBox jComboBox1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
